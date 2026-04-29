@@ -1,0 +1,5 @@
+data/raw/*.csv
+data/raw/*.zip
+*.env
+.env.local
+docker/postgres_data/
