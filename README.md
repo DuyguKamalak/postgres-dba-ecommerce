@@ -161,10 +161,10 @@ docker exec postgres_dba psql -U dba_admin -d ecommerce_db -f /tmp/import.sql
 ## DBA Konuları (Yol Haritası)
 
 - [x] **Faz 1** — Ortam kurulumu, dataset indirme, schema tasarımı, veri aktarımı
-- [ ] **Faz 2** — `EXPLAIN ANALYZE` ile sorgu analizi, index optimizasyonu
-- [ ] **Faz 3** — `pg_stat_*` görünümleriyle monitoring
-- [ ] **Faz 4** — `pg_dump` / `pg_restore` ile yedekleme ve geri yükleme
-- [ ] **Faz 5** — Rol ve yetki yönetimi (readonly, analyst, admin rolleri)
+- [x] **Faz 2** — `EXPLAIN ANALYZE` ile sorgu analizi, 11 index oluşturuldu (128x hız artışı)
+- [x] **Faz 3** — `pg_stat_*` görünümleriyle monitoring (cache hit, bloat, bağlantı takibi)
+- [x] **Faz 4** — `pg_dump` / `pg_restore` ile yedekleme (35MB custom format backup)
+- [x] **Faz 5** — Rol ve yetki yönetimi (`readonly_user`, `analyst_user`, `dba_admin`)
 
 ---
 
