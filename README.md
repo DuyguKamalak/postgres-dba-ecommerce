@@ -79,13 +79,22 @@ postgres-dba-ecommerce/
 │   └── docker-compose.yml          # PostgreSQL 16 + pgAdmin servisleri
 ├── sql/
 │   ├── schema/
-│   │   └── 01_create_tables.sql    # Tablo tanımları ve kısıtlamalar
+│   │   ├── 01_create_tables.sql    # Tablo tanımları ve FK kısıtlamaları
+│   │   ├── 08_roles.sql            # Rol ve yetki yönetimi
+│   │   └── 09_partitioning.sql     # Declarative partitioning (yıla göre)
 │   ├── seed/
 │   │   └── 02_import_data.sql      # CSV -> PostgreSQL veri aktarımı
-│   ├── queries/                    # Analitik sorgular
-│   ├── indexes/                    # Index oluşturma scriptleri
-│   ├── monitoring/                 # pg_stat görünümleri ve izleme
-│   └── backup/                     # Yedekleme scriptleri
+│   ├── queries/
+│   │   └── 03_explain_before_index.sql  # EXPLAIN ANALYZE baseline
+│   ├── indexes/
+│   │   └── 04_create_indexes.sql   # 11 index (B-tree + partial)
+│   ├── monitoring/
+│   │   ├── 05_index_monitoring.sql # pg_stat_user_indexes
+│   │   ├── 06_monitoring.sql       # Aktif sorgu, cache hit, bloat izleme
+│   │   ├── 10_vacuum_demo.sql      # VACUUM ANALYZE demonstrasyonu
+│   │   └── pgbadger_report.html    # pgBadger log analiz raporu
+│   └── backup/
+│       └── 07_backup_restore.sh    # pg_dump / pg_restore
 ├── scripts/
 │   └── download_dataset.py         # Kaggle'dan veri indirme
 └── data/
@@ -165,6 +174,9 @@ docker exec postgres_dba psql -U dba_admin -d ecommerce_db -f /tmp/import.sql
 - [x] **Faz 3** — `pg_stat_*` görünümleriyle monitoring (cache hit, bloat, bağlantı takibi)
 - [x] **Faz 4** — `pg_dump` / `pg_restore` ile yedekleme (35MB custom format backup)
 - [x] **Faz 5** — Rol ve yetki yönetimi (`readonly_user`, `analyst_user`, `dba_admin`)
+- [x] **Faz 6** — VACUUM ANALYZE ile bloat yönetimi (198K dead row temizlendi)
+- [x] **Faz 7** — Declarative Partitioning (`orders` tablosu yıla göre bölündü)
+- [x] **Faz 8** — pgBadger ile log analizi (HTML rapor üretildi)
 
 ---
 
