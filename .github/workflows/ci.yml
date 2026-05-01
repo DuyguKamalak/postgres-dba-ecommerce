@@ -1,0 +1,94 @@
+name: PostgreSQL CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Schema & SQL Validation
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: ecommerce_db
+          POSTGRES_USER: dba_admin
+          POSTGRES_PASSWORD: dba_password123
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dba_admin -d ecommerce_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create schema
+        env:
+          PGPASSWORD: dba_password123
+        run: |
+          psql -h localhost -U dba_admin -d ecommerce_db \
+            -f sql/schema/01_create_tables.sql
+
+      - name: Apply indexes
+        env:
+          PGPASSWORD: dba_password123
+        run: |
+          psql -h localhost -U dba_admin -d ecommerce_db \
+            -f sql/indexes/04_create_indexes.sql
+
+      - name: Apply roles
+        env:
+          PGPASSWORD: dba_password123
+        run: |
+          psql -h localhost -U dba_admin -d ecommerce_db \
+            -f sql/schema/08_roles.sql
+
+      - name: Apply partitioning
+        env:
+          PGPASSWORD: dba_password123
+        run: |
+          psql -h localhost -U dba_admin -d ecommerce_db \
+            -f sql/schema/09_partitioning.sql
+
+      - name: Validate schema (table + FK count)
+        env:
+          PGPASSWORD: dba_password123
+        run: |
+          TABLE_COUNT=$(psql -h localhost -U dba_admin -d ecommerce_db -t -A \
+            -c "SELECT COUNT(*) FROM information_schema.tables
+                WHERE table_schema = 'ecommerce' AND table_type = 'BASE TABLE'
+                  AND table_name NOT LIKE 'orders_%';")
+          echo "Table count: $TABLE_COUNT"
+          [ "$TABLE_COUNT" -ge 9 ] || (echo "FAIL: expected 9+ tables" && exit 1)
+
+          FK_COUNT=$(psql -h localhost -U dba_admin -d ecommerce_db -t -A \
+            -c "SELECT COUNT(*) FROM information_schema.table_constraints
+                WHERE constraint_type = 'FOREIGN KEY'
+                  AND constraint_schema = 'ecommerce';")
+          echo "FK count: $FK_COUNT"
+          [ "$FK_COUNT" -ge 6 ] || (echo "FAIL: expected 6+ FK constraints" && exit 1)
+
+      - name: Validate indexes
+        env:
+          PGPASSWORD: dba_password123
+        run: |
+          INDEX_COUNT=$(psql -h localhost -U dba_admin -d ecommerce_db -t -A \
+            -c "SELECT COUNT(*) FROM pg_indexes
+                WHERE schemaname = 'ecommerce'
+                  AND indexname NOT LIKE '%pkey%';")
+          echo "Custom index count: $INDEX_COUNT"
+          [ "$INDEX_COUNT" -ge 11 ] || (echo "FAIL: expected 11+ custom indexes" && exit 1)
+
+      - name: Run monitoring queries (smoke test)
+        env:
+          PGPASSWORD: dba_password123
+        run: |
+          psql -h localhost -U dba_admin -d ecommerce_db \
+            -f sql/monitoring/06_monitoring.sql > /dev/null
