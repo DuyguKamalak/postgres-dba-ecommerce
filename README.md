@@ -49,25 +49,90 @@ Bu proje, 100.000+ siparişten oluşan Brezilya e-ticaret veri setini kullanarak
 
 ## Veritabanı Şeması
 
-```
-customers ──────┐
-                ├──► orders ──► order_items ──► products
-sellers ────────┘       │                          │
-                        │                          ▼
-                        ├──► order_payments   product_categories
-                        │
-                        └──► order_reviews
+```mermaid
+erDiagram
+    customers {
+        varchar customer_id PK
+        varchar customer_unique_id
+        varchar customer_zip_code_prefix
+        varchar customer_city
+        varchar customer_state
+    }
+    orders {
+        varchar order_id PK
+        varchar customer_id FK
+        varchar order_status
+        timestamp order_purchase_timestamp
+        timestamp order_delivered_customer_date
+    }
+    order_items {
+        varchar order_id FK
+        int order_item_id
+        varchar product_id FK
+        varchar seller_id FK
+        numeric price
+        numeric freight_value
+    }
+    order_payments {
+        varchar order_id FK
+        int payment_sequential
+        varchar payment_type
+        int payment_installments
+        numeric payment_value
+    }
+    order_reviews {
+        varchar review_id PK
+        varchar order_id FK
+        int review_score
+        text comment_message
+        timestamp review_creation_date
+    }
+    products {
+        varchar product_id PK
+        varchar category_name FK
+        numeric product_weight_g
+        numeric product_length_cm
+    }
+    sellers {
+        varchar seller_id PK
+        varchar seller_zip_code_prefix
+        varchar seller_city
+        varchar seller_state
+    }
+    product_categories {
+        varchar category_name PK
+        varchar category_name_english
+    }
+    geolocation {
+        varchar geolocation_zip_code_prefix
+        numeric geolocation_lat
+        numeric geolocation_lng
+        varchar geolocation_city
+        varchar geolocation_state
+    }
+
+    customers ||--o{ orders : "places"
+    orders ||--|{ order_items : "contains"
+    orders ||--o{ order_payments : "paid via"
+    orders ||--o{ order_reviews : "reviewed in"
+    products ||--o{ order_items : "included in"
+    sellers ||--o{ order_items : "sold by"
+    product_categories ||--o{ products : "categorizes"
 ```
 
-### Tablo İlişkileri
+## Docker Mimarisi
 
-- `orders.customer_id` → `customers.customer_id`
-- `order_items.order_id` → `orders.order_id`
-- `order_items.product_id` → `products.product_id`
-- `order_items.seller_id` → `sellers.seller_id`
-- `order_payments.order_id` → `orders.order_id`
-- `order_reviews.order_id` → `orders.order_id`
-- `products.category_name` → `product_categories.category_name`
+```mermaid
+graph TD
+    A[Host Machine :5432] --> B[postgres_dba\nPostgreSQL 16]
+    A2[Host Machine :5050] --> C[pgadmin_dba\npgAdmin 4]
+    C --> B
+    B --> D[(postgres_data\nDocker Volume)]
+
+    style B fill:#336791,color:#fff
+    style C fill:#2d6099,color:#fff
+    style D fill:#555,color:#fff
+```
 
 ---
 
@@ -76,7 +141,8 @@ sellers ────────┘       │                          │
 ```
 postgres-dba-ecommerce/
 ├── docker/
-│   └── docker-compose.yml          # PostgreSQL 16 + pgAdmin servisleri
+│   ├── docker-compose.yml          # PostgreSQL 16 + pgAdmin servisleri
+│   └── .env.example                # Ortam değişkeni şablonu
 ├── sql/
 │   ├── schema/
 │   │   ├── 01_create_tables.sql    # Tablo tanımları ve FK kısıtlamaları
@@ -97,6 +163,7 @@ postgres-dba-ecommerce/
 │       └── 07_backup_restore.sh    # pg_dump / pg_restore
 ├── scripts/
 │   └── download_dataset.py         # Kaggle'dan veri indirme
+├── requirements.txt                # Python bağımlılıkları
 └── data/
     └── raw/                        # Ham CSV dosyaları (.gitignore'da)
 ```
@@ -130,7 +197,7 @@ Linux/Mac: ~/.kaggle/kaggle.json
 ### 3. Veri setini indir
 
 ```bash
-pip install kaggle
+pip install -r requirements.txt
 python scripts/download_dataset.py
 ```
 
@@ -152,6 +219,13 @@ docker cp sql/seed/02_import_data.sql postgres_dba:/tmp/import.sql
 docker exec postgres_dba psql -U dba_admin -d ecommerce_db -f /tmp/import.sql
 ```
 
+### 4. Ortam değişkenlerini ayarla
+
+```bash
+cp docker/.env.example docker/.env
+# docker/.env dosyasını düzenleyerek şifreleri değiştir
+```
+
 ### Bağlantı Bilgileri
 
 | Parametre | Değer |
@@ -160,10 +234,10 @@ docker exec postgres_dba psql -U dba_admin -d ecommerce_db -f /tmp/import.sql
 | Port | 5432 |
 | Database | ecommerce_db |
 | Username | dba_admin |
-| Password | dba_password123 |
+| Password | *(docker/.env dosyasından)* |
 | pgAdmin URL | http://localhost:5050 |
 | pgAdmin Email | admin@dba.local |
-| pgAdmin Şifre | admin123 |
+| pgAdmin Şifre | *(docker/.env dosyasından)* |
 
 ---
 
@@ -177,6 +251,10 @@ docker exec postgres_dba psql -U dba_admin -d ecommerce_db -f /tmp/import.sql
 - [x] **Faz 6** — VACUUM ANALYZE ile bloat yönetimi (198K dead row temizlendi)
 - [x] **Faz 7** — Declarative Partitioning (`orders` tablosu yıla göre bölündü)
 - [x] **Faz 8** — pgBadger ile log analizi (HTML rapor üretildi)
+- [x] **Faz 9** — Window Functions ile iş analizi (RFM, cohort, aylık trend)
+- [x] **Faz 10** — Materialized View'lar (aylık satış, kategori geliri, satıcı performansı)
+- [x] **Faz 11** — pg_stat_statements ile yavaş sorgu analizi
+- [x] **Faz 12** — Otomatik günlük sağlık kontrol scripti (cache hit, bloat, index kullanımı)
 
 ---
 

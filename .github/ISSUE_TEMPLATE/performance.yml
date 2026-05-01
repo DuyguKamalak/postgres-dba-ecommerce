@@ -1,0 +1,21 @@
+name: Performans Sorunu
+description: Yavaş sorgu veya index eksikliği bildirin
+labels: ["performance"]
+body:
+  - type: textarea
+    id: query
+    attributes:
+      label: Sorgu
+      description: Yavaş çalışan sorguyu buraya yapıştırın
+      render: sql
+    validations:
+      required: true
+  - type: textarea
+    id: explain
+    attributes:
+      label: EXPLAIN ANALYZE Çıktısı
+      render: text
+  - type: input
+    id: duration
+    attributes:
+      label: Sorgu Süresi (ms)

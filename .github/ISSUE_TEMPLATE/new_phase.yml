@@ -1,0 +1,23 @@
+name: Yeni Faz Önerisi
+description: Projeye yeni bir DBA konusu ekleyin
+labels: ["enhancement"]
+body:
+  - type: input
+    id: topic
+    attributes:
+      label: Konu
+      placeholder: "Örn: Logical Replication, TimescaleDB"
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Neden Değerli?
+      description: Bu konunun DBA portföyüne katkısını açıklayın
+    validations:
+      required: true
+  - type: dropdown
+    id: difficulty
+    attributes:
+      label: Zorluk
+      options: [Kolay, Orta, Zor]
